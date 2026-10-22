@@ -140,7 +140,7 @@ jobs:
           src = re.sub(r"projectName:\s*['\"][^'\"]*['\"]", "projectName: '%s'" % repo, src, count=1)
           open(path, "w", encoding="utf-8").write(src)
           PY
-          npm install -g pnpm@9 >/dev/null 2>&1 || true
+          npm install -g pnpm@latest >/dev/null 2>&1 || true
           DIR="$(dirname "$CFG")"
           cd "$DIR"
           (pnpm install --ignore-scripts --no-frozen-lockfile 2>&1 | tail -20 || npm install --no-audit --no-fund 2>&1 | tail -20) || exit 0
