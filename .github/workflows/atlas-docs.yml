@@ -111,13 +111,17 @@ jobs:
           rm -rf "$GITHUB_WORKSPACE/_atlas_site"; mkdir -p "$GITHUB_WORKSPACE/_atlas_site"
           cp -a "$OUT"/. "$GITHUB_WORKSPACE/_atlas_site/" 2>/dev/null || true
 
-      - name: Setup node + pnpm
+      - name: Setup node
+        if: (steps.detect.outputs.docusaurus_cfg != '' || steps.detect.outputs.vitepress_cfg != '') && hashFiles('_atlas_site/index.html') == ''
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
+      - name: Enable pnpm
         if: (steps.detect.outputs.docusaurus_cfg != '' || steps.detect.outputs.vitepress_cfg != '') && hashFiles('_atlas_site/index.html') == ''
         continue-on-error: true
         run: |
-          curl -sSL https://deb.nodesource.com/setup_24.x | sudo -E bash - >/dev/null 2>&1 || true
-          sudo apt-get install -y nodejs >/dev/null 2>&1 || true
-          node -v || true
+          node -v
           sudo corepack enable >/dev/null 2>&1 || true
           corepack prepare pnpm@latest --activate >/dev/null 2>&1 || sudo npm install -g pnpm@latest >/dev/null 2>&1 || true
           pnpm -v || true
@@ -163,7 +167,7 @@ jobs:
                   src = src[:m.end()] + ("\n  base: '/%s/'," % repo) + src[m.end():]
           open(path, "w", encoding="utf-8").write(src)
           PY
-          DIR="$(dirname "$(dirname "$CFG")")"
+          DIR="$(cd "$(dirname "$(dirname "$CFG")")" && pwd)"
           cd "$DIR"
           (npm install --no-audit --no-fund 2>&1 | tail -20 || yarn install --frozen-lockfile 2>&1 | tail -20) || exit 0
           npx vitepress build . 2>&1 | tail -40 || exit 0
