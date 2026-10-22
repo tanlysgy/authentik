@@ -143,7 +143,14 @@ jobs:
           npm install -g pnpm@latest >/dev/null 2>&1 || true
           DIR="$(dirname "$CFG")"
           cd "$DIR"
-          (pnpm install --ignore-scripts --no-frozen-lockfile 2>&1 | tail -20 || npm install --no-audit --no-fund 2>&1 | tail -20) || exit 0
+          ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+          if [ -f "$ROOT/pnpm-workspace.yaml" ] && [ "$ROOT" != "$PWD" ]; then
+            # Workspace monorepo: the site imports sibling packages, so install
+            # from the workspace root instead of the docs directory.
+            (cd "$ROOT" && pnpm install --ignore-scripts --no-frozen-lockfile 2>&1 | tail -20) || exit 0
+          else
+            (pnpm install --ignore-scripts --no-frozen-lockfile 2>&1 | tail -20 || npm install --no-audit --no-fund 2>&1 | tail -20) || exit 0
+          fi
           (pnpm exec docusaurus build --out-dir "$GITHUB_WORKSPACE/_atlas_site_try" 2>&1 || npx docusaurus build --out-dir "$GITHUB_WORKSPACE/_atlas_site_try" 2>&1) | tail -40 || exit 0
           rm -rf "$GITHUB_WORKSPACE/_atlas_site"; mv "$GITHUB_WORKSPACE/_atlas_site_try" "$GITHUB_WORKSPACE/_atlas_site"
 
