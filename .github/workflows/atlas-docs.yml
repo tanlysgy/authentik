@@ -152,7 +152,13 @@ jobs:
             (pnpm install --ignore-scripts --no-frozen-lockfile 2>&1 | tail -20 || npm install --no-audit --no-fund 2>&1 | tail -20) || exit 0
           fi
           (pnpm exec docusaurus build --out-dir "$GITHUB_WORKSPACE/_atlas_site_try" 2>&1 || npx docusaurus build --out-dir "$GITHUB_WORKSPACE/_atlas_site_try" 2>&1) | tail -40 || exit 0
-          rm -rf "$GITHUB_WORKSPACE/_atlas_site"; mv "$GITHUB_WORKSPACE/_atlas_site_try" "$GITHUB_WORKSPACE/_atlas_site"
+          if [ -f "$GITHUB_WORKSPACE/_atlas_site_try/index.html" ] && grep -q "__docusaurus-base-url-issue-banner" "$GITHUB_WORKSPACE/_atlas_site_try/index.html"; then
+            echo "::warning::docusaurus built with a mismatched baseUrl; discarding output"
+            rm -rf "$GITHUB_WORKSPACE/_atlas_site_try"
+          fi
+          if [ -f "$GITHUB_WORKSPACE/_atlas_site_try/index.html" ]; then
+            rm -rf "$GITHUB_WORKSPACE/_atlas_site"; mv "$GITHUB_WORKSPACE/_atlas_site_try" "$GITHUB_WORKSPACE/_atlas_site"
+          fi
 
       - name: Build · vitepress
         if: steps.detect.outputs.vitepress_cfg != '' && hashFiles('_atlas_site/index.html') == ''
@@ -234,7 +240,7 @@ jobs:
               p = root / d
               if not p.is_dir():
                   return -1
-              return len([x for x in p.rglob("*.md") if "node_modules" not in x.parts])
+              return len([x for x in p.rglob("*") if x.suffix in (".md", ".mdx") and "node_modules" not in x.parts])
 
           cands = ["docs", "doc", "documentation", "website/docs", "website/content",
                    "content", "site/docs", "wiki", "manual", "handbook"]
@@ -260,7 +266,9 @@ jobs:
                   rel = p.relative_to(src)
                   if "node_modules" in rel.parts or any(part.startswith(".") for part in rel.parts):
                       continue
-                  dst = stage / rel
+                  if rel.suffix not in (".md", ".mdx"):
+                      continue
+                  dst = stage / rel.with_suffix(".md")
                   dst.parent.mkdir(parents=True, exist_ok=True)
                   try:
                       shutil.copy(p, dst)
